@@ -225,3 +225,9 @@ __marimo__/
 *.tfstate.*
 *.tfvars
 crash.log
+
+# Flight prices data
+data/
+
+# macOS
+.DS_Store
