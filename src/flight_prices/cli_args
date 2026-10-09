@@ -1,0 +1,21 @@
+uv run --env-file .env python src/flight_prices/ingestion.py \
+  --engine google_flights \
+  --arrival_id MRU \
+  --outbound_date 2027-01-07 \
+  --return_date 2027-01-16 \
+  --currency GBP \
+  --gl uk \
+  --hl en \
+  --travel_class 1 \
+  --adults 2
+
+  uv run --env-file .env python src/flight_prices/ingestion_gcs.py \
+  --engine google_flights \
+  --arrival_id MRU \
+  --outbound_date 2027-01-07 \
+  --return_date 2027-01-16 \
+  --currency GBP \
+  --gl uk \
+  --hl en \
+  --travel_class 1 \
+  --adults 2
