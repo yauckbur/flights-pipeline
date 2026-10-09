@@ -1,128 +1,23 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[8]:
-
 
 import json
 import hashlib
 import pandas as pd
 
 from pathlib import Path
-from datetime import datetime, timezone
+from datetime import datetime
 
 
-# In[9]:
-
-
-# Find all JSON files in the raw directory and its subdirectories
-files = sorted(Path("data/raw").rglob("*.json"))
-
-print(f"Found {len(files)} JSON files")
-
-
-# In[10]:
-
-
-# Create an empty list to store each file's DataFrame
-dfs = []
-
-
-# In[11]:
-
-
-# Capture the extraction date once for this batch
-extraction_date = datetime.now(timezone.utc).date()
-
-
-# In[12]:
-
-
-# Loop through every JSON file
-for file in files:
-
-    # Open and read the JSON file
-    with open(file, "r") as f:
-        data = json.load(f)
-
-    # Extract best_flights and other_flights
-    flights = (
-        (data.get("best_flights") or []) +
-        (data.get("other_flights") or [])
-    )
-
-    # Skip files without any flights
-    if not flights:
-        print(f"No flights found in {file.name}")
-        continue
-
-    # Normalise the flights into a DataFrame
-    df_file = pd.json_normalize(flights)
-
-    # Extract the search parameters from the original JSON
-    params = data.get("search_parameters", {})
-
-    # Add the search parameters as columns
-    df_file["departure_airport"] = params.get("departure_id")
-    df_file["arrival_airport"] = params.get("arrival_id")
-    df_file["outbound_date"] = params.get("outbound_date")
-    df_file["return_date"] = params.get("return_date")
-    df_file["currency"] = params.get("currency")
-
-    # Select and rearrange the columns
-    df_file = df_file[[
-        "flights",
-        "departure_airport",
-        "arrival_airport",
-        "outbound_date",
-        "return_date",
-        "total_duration",
-        "price",
-        "currency",
-        "type"
-    ]].copy()
-
-    # Extract the original extraction date from the filename
-    # Example: BHX_MRU_20261008_131750_217337.json
-
-    date_string = file.stem.split("_")[2]
-
-    extraction_date = datetime.strptime(
-        date_string, "%Y%m%d"
-    ).date()
-
-    # Add extraction date to every row from this file
-    df_file["extraction_date"] = extraction_date
-
-    # Preserve the source filename for traceability
-    df_file["source_file"] = file.name
-
-
-    # Append this DataFrame to our list
-    dfs.append(df_file)
-
-
-# Combine all the individual DataFrames into one
-if not dfs:
-    raise ValueError("No flight records found in the JSON files")
-
-df = pd.concat(dfs, ignore_index=True)
-
-display(df.head())
-
-
-# In[13]:
-
-
-# generate unique row id
-
+# Generate a deterministic observation ID for each row
 def generate_id(row):
 
     record = {
         "departure_airport": row["departure_airport"],
         "arrival_airport": row["arrival_airport"],
-        "outbound_date": row["outbound_date"],
-        "return_date": row["return_date"],
+        "outbound_date": str(row["outbound_date"]),
+        "return_date": str(row["return_date"]),
         "price": int(row["price"]),
         "currency": row["currency"],
         "extraction_date": str(row["extraction_date"]),
@@ -140,33 +35,122 @@ def generate_id(row):
     ).hexdigest()
 
 
-# Generate a hash for every row across all five files
-df["observation_id"] = df.apply(generate_id, axis=1)
+# Transform one SerpApi JSON response into a DataFrame
+def transform_flights(data, filename):
 
+    # Combine best and other flight itineraries
+    flights = (
+        (data.get("best_flights") or []) +
+        (data.get("other_flights") or [])
+    )
 
-# In[14]:
+    # Return an empty DataFrame if no flights exist
+    if not flights:
+        return pd.DataFrame()
 
+    # Normalise the flight itineraries
+    df = pd.json_normalize(flights)
 
-df = df[[
-    "observation_id",
-    "extraction_date",
-    "departure_airport",
-    "arrival_airport",
-    "outbound_date",
-    "return_date",
-    "total_duration",
-    "price",
-    "currency",
-    "type",
-    "flights",
-    "source_file"
-]]
+    # Extract search parameters
+    params = data.get("search_parameters") or {}
 
-display(df.head())
+    df["departure_airport"] = params.get("departure_id")
+    df["arrival_airport"] = params.get("arrival_id")
+    df["outbound_date"] = params.get("outbound_date")
+    df["return_date"] = params.get("return_date")
+    df["currency"] = params.get("currency")
 
+    # Select required columns
+    df = df[[
+        "flights",
+        "departure_airport",
+        "arrival_airport",
+        "outbound_date",
+        "return_date",
+        "total_duration",
+        "price",
+        "currency",
+        "type"
+    ]].copy()
 
-# In[ ]:
+    # Extract the original extraction date from filename
+    # BHX_MRU_20261008_131750_217337.json
+    source_file = Path(filename).name
 
+    date_string = Path(source_file).stem.split("_")[2]
 
+    extraction_date = datetime.strptime(
+        date_string, "%Y%m%d"
+    ).date()
 
+    df["extraction_date"] = extraction_date
+    df["source_file"] = source_file
 
+    # Convert columns to appropriate data types
+    df["outbound_date"] = pd.to_datetime(
+        df["outbound_date"]
+    ).dt.date
+
+    df["return_date"] = pd.to_datetime(
+        df["return_date"]
+    ).dt.date
+
+    df["price"] = pd.to_numeric(
+        df["price"], errors="raise"
+    ).astype("Int64")
+
+    df["total_duration"] = pd.to_numeric(
+        df["total_duration"], errors="coerce"
+    ).astype("Int64")
+
+    # Validate fields needed for a valid observation
+    required = [
+        "departure_airport",
+        "arrival_airport",
+        "outbound_date",
+        "return_date",
+        "price",
+        "currency"
+    ]
+
+    if df[required].isna().any().any():
+        raise ValueError(f"Missing required data in {source_file}")
+
+    if not df["flights"].apply(
+        lambda x: isinstance(x, list) and len(x) > 0
+    ).all():
+        raise ValueError(f"Invalid flight legs in {source_file}")
+
+    # Number of outbound stops = number of legs - 1
+    df["stops"] = df["flights"].apply(
+        lambda legs: len(legs) - 1
+    )
+
+    # Generate hash before converting the nested flights
+    df["observation_id"] = df.apply(
+        generate_id, axis=1
+    )
+
+    # Convert nested flights into JSON-formatted strings
+    df["flights"] = df["flights"].apply(
+        lambda legs: json.dumps(legs, sort_keys=True)
+    )
+
+    # Arrange columns in the final order
+    df = df[[
+        "observation_id",
+        "extraction_date",
+        "departure_airport",
+        "arrival_airport",
+        "outbound_date",
+        "return_date",
+        "total_duration",
+        "stops",
+        "price",
+        "currency",
+        "type",
+        "flights",
+        "source_file"
+    ]]
+
+    return df
