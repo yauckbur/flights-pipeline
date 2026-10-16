@@ -1,0 +1,16 @@
+
+[
+  {"name": "observation_id", "type": "STRING", "mode": "NULLABLE"},
+  {"name": "extraction_date", "type": "DATE", "mode": "NULLABLE"},
+  {"name": "departure_airport", "type": "STRING", "mode": "NULLABLE"},
+  {"name": "arrival_airport", "type": "STRING", "mode": "NULLABLE"},
+  {"name": "outbound_date", "type": "DATE", "mode": "NULLABLE"},
+  {"name": "return_date", "type": "DATE", "mode": "NULLABLE"},
+  {"name": "total_duration", "type": "INTEGER", "mode": "NULLABLE"},
+  {"name": "stops", "type": "INTEGER", "mode": "NULLABLE"},
+  {"name": "price", "type": "INTEGER", "mode": "NULLABLE"},
+  {"name": "currency", "type": "STRING", "mode": "NULLABLE"},
+  {"name": "type", "type": "STRING", "mode": "NULLABLE"},
+  {"name": "flights", "type": "STRING", "mode": "NULLABLE"},
+  {"name": "source_file", "type": "STRING", "mode": "NULLABLE"}
+]

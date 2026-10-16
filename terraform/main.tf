@@ -8,8 +8,8 @@ terraform {
 }
 
 provider "google" {
-  project     = var.project
-  region      = var.region
+  project = var.project
+  region  = var.region
 }
 
 resource "google_storage_bucket" "data_lake" {
@@ -30,8 +30,21 @@ resource "google_storage_bucket" "data_lake" {
   }
 }
 
+
+
 // Create a BigQuery dataset, format: resource type, resource name
 resource "google_bigquery_dataset" "flights_warehouse" {
   dataset_id = var.bq_dataset_name // must be unique within the project
   location   = var.location
+}
+
+//create a BigQuery table, format: resource type, resource name
+resource "google_bigquery_table" "flights_table" {
+  dataset_id = google_bigquery_dataset.flights_warehouse.dataset_id // reference the dataset created
+  table_id   = "final_flights"                                      // must be unique within the dataset
+  schema     = file("schema.json")                                  // reference the schema file
+  time_partitioning {
+    type  = "DAY"
+    field = "extraction_date"
+  } // Partition the table by the extraction_date field
 }
