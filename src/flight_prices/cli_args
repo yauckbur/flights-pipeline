@@ -9,7 +9,7 @@ uv run --env-file .env python src/flight_prices/ingestion.py \
   --travel_class 1 \
   --adults 2
 
-  uv run --env-file .env python src/flight_prices/ingestion_gcs.py \
+ uv run --env-file .env src/flight_prices/python ingestion_gcs.py \
   --engine google_flights \
   --arrival_id MRU \
   --outbound_date 2027-01-07 \
