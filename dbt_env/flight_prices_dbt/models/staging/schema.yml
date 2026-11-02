@@ -1,0 +1,44 @@
+
+version: 2
+
+models:
+  - name: stg_flight_prices
+    description: "Cleaned flight price observations from BigQuery"
+
+    columns:
+      - name: observation_id
+        description: "Unique identifier for each flight price observation"
+        data_tests:
+          - unique
+          - not_null
+
+      - name: extraction_date
+        description: "Date the flight price was collected"
+        data_tests:
+          - not_null
+
+      - name: departure_airport
+        description: "UK airport of departure"
+        data_tests:
+          - not_null
+
+      - name: arrival_airport
+        description: "Destination airport"
+        data_tests:
+          - not_null
+
+      - name: outbound_date
+        data_tests:
+          - not_null
+
+      - name: return_date
+        data_tests:
+          - not_null
+
+      - name: price_gbp
+        description: "Total flight price in GBP"
+        data_tests:
+          - not_null
+
+      - name: stops
+        description: "Number of stops on the outbound flight"

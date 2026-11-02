@@ -1,0 +1,11 @@
+version: 2
+
+sources:
+  - name: raw_data #arbitrary name for the source
+    description: "raw data source for flight prices"
+    database: flights-pipeline-510915 #BigQuery project ID
+    schema: flights_warehouse #Dataset name
+    tables:
+      - name: final_flights
+        description: "final flights table"
+
