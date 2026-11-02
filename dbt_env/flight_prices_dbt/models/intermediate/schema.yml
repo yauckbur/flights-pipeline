@@ -1,0 +1,57 @@
+
+version: 2
+
+models:
+  - name: int_daily_flight_prices
+    description: "Daily aggregated flight prices by route and travel dates"
+
+    columns:
+      - name: extraction_date
+        description: "Date the prices were collected"
+        data_tests:
+          - not_null
+
+      - name: departure_airport
+        description: "Departure airport"
+        data_tests:
+          - not_null
+
+      - name: arrival_airport
+        description: "Arrival airport"
+        data_tests:
+          - not_null
+
+      - name: outbound_date
+        data_tests:
+          - not_null
+
+      - name: return_date
+        data_tests:
+          - not_null
+
+      - name: currency
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['GBP']
+
+      - name: offers_observed
+        description: "Number of flight offers collected"
+        data_tests:
+          - not_null
+
+      - name: min_price_gbp
+        description: "Cheapest observed flight price"
+        data_tests:
+          - not_null
+
+      - name: avg_price_gbp
+        description: "Average observed flight price"
+        data_tests:
+          - not_null
+
+      - name: max_price_gbp
+        description: "Most expensive observed flight price"
+        data_tests:
+          - not_null
