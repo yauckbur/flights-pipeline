@@ -1,0 +1,46 @@
+
+version: 2
+
+models:
+  - name: daily_min_price
+    description: "Cheapest available flight across all UK departure airports for today's extraction"
+
+    columns:
+      - name: extraction_date
+        description: "Date the flight price was collected"
+        data_tests:
+          - not_null
+          - unique
+
+      - name: departure_airport
+        description: "Airport offering the cheapest flight"
+        data_tests:
+          - not_null
+
+      - name: arrival_airport
+        description: "Destination airport"
+        data_tests:
+          - not_null
+
+      - name: outbound_date
+        description: "Outbound travel date"
+        data_tests:
+          - not_null
+
+      - name: return_date
+        description: "Return travel date"
+        data_tests:
+          - not_null
+
+      - name: currency
+        description: "Currency of the flight price"
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['GBP']
+
+      - name: min_price_gbp
+        description: "Cheapest flight price across all departure airports"
+        data_tests:
+          - not_null
