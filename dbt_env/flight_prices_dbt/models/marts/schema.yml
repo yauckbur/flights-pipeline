@@ -1,45 +1,7 @@
 version: 2
 
 models:
-
-  # DAILY MINIMUM PRICE
-  - name: daily_min_price
-    description: "Cheapest available flight across all UK airports today"
-
-    columns:
-      - name: extraction_date
-        data_tests:
-          - not_null
-          - unique
-
-      - name: departure_airport
-        data_tests:
-          - not_null
-
-      - name: arrival_airport
-        data_tests:
-          - not_null
-
-      - name: outbound_date
-        data_tests:
-          - not_null
-
-      - name: return_date
-        data_tests:
-          - not_null
-
-      - name: currency
-        data_tests:
-          - not_null
-          - accepted_values:
-              arguments:
-                values: ['GBP']
-
-      - name: min_price_gbp
-        data_tests:
-          - not_null
-
-
+  
   # HISTORICAL PRICE ANALYSIS
   - name: price_history
     description: "Daily cheapest flight across all UK airports and rolling historical average"
@@ -60,3 +22,40 @@ models:
 
       - name: rolling_7_day_avg_min_price_gbp
         description: "Average minimum price from the previous seven observations"
+
+
+# PRICE CLASSIFICATION
+  - name: price_classification
+    description: "Classifies today's cheapest flight against the average minimum price from the previous seven observations"
+
+    columns:
+      - name: extraction_date
+        description: "Date the flight price was collected"
+        data_tests:
+          - not_null
+          - unique
+
+      - name: min_price_gbp
+        description: "Cheapest available flight price across all UK airports"
+        data_tests:
+          - not_null
+
+      - name: departure_airport
+        description: "Airport offering the cheapest flight"
+        data_tests:
+          - not_null
+
+      - name: rolling_7_observation_avg_min_price_gbp
+        description: "Average of the previous seven observed daily minimum prices"
+
+      - name: price_category
+        description: "Classification of today's cheapest price relative to the historical average"
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values:
+                  - 'Below Average'
+                  - 'Above Average'
+                  - 'Average'
+                  - 'Insufficient History'
