@@ -1,0 +1,85 @@
+
+services:
+
+  kestra_postgres:
+    image: postgres:18
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: kestra
+      POSTGRES_USER: kestra
+      POSTGRES_PASSWORD: ${KESTRA_DB_PASSWORD}
+    volumes:
+      - kestra_postgres_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -d $${POSTGRES_DB} -U $${POSTGRES_USER}"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+
+  kestra:
+    image: kestra/kestra:v1.1
+    restart: unless-stopped
+    user: "root"
+    command: server standalone
+    stop_grace_period: 6m
+
+    volumes:
+      - kestra_data:/app/storage
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /tmp/kestra-wd:/tmp/kestra-wd
+
+    environment:
+      KESTRA_CONFIGURATION: |
+        datasources:
+          postgres:
+            url: jdbc:postgresql://kestra_postgres:5432/kestra
+            driverClassName: org.postgresql.Driver
+            username: kestra
+            password: ${KESTRA_DB_PASSWORD}
+
+        kestra:
+          server:
+            basic-auth:
+              enabled: true
+              username: admin@kestra.io
+              password: ${KESTRA_AUTH_PASSWORD}
+
+          repository:
+            type: postgres
+
+          storage:
+            type: local
+            local:
+              base-path: "/app/storage"
+
+          queue:
+            type: postgres
+
+          tasks:
+            tmp-dir:
+              path: /tmp/kestra-wd/tmp
+
+          plugins:
+            configurations:
+              - type: io.kestra.plugin.scripts.runner.docker.Docker
+                values:
+                  volume-enabled: true
+
+
+          
+
+          url: http://localhost:8080/
+
+    ports:
+      - "127.0.0.1:8080:8080"
+
+    depends_on:
+      kestra_postgres:
+        condition: service_healthy
+
+volumes:
+  kestra_postgres_data:
+    driver: local
+
+  kestra_data:
+    driver: local

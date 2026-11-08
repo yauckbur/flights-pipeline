@@ -103,6 +103,17 @@ def transform_flights(data, filename):
         df["total_duration"], errors="coerce"
     ).astype("Int64")
 
+    # Remove itineraries with missing prices
+    missing_prices = df["price"].isna().sum()
+
+    if missing_prices > 0:
+        print(
+            f"Warning: Skipping {missing_prices} flight(s) "
+            f"with missing prices in {source_file}"
+        )
+
+        df = df.dropna(subset=["price"]).copy()
+
     # Validate fields needed for a valid observation
     required = [
         "departure_airport",
@@ -112,6 +123,7 @@ def transform_flights(data, filename):
         "price",
         "currency"
     ]
+    
 
     if df[required].isna().any().any():
         raise ValueError(f"Missing required data in {source_file}")
