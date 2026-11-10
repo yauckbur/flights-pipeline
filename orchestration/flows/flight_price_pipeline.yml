@@ -1,0 +1,118 @@
+
+id: flight_price_pipeline
+namespace: flights
+
+description: UK to Mauritius flight price pipeline
+
+tasks:
+  - id: ingest_flight_prices
+    type: io.kestra.plugin.scripts.shell.Commands
+
+    taskRunner:
+      type: io.kestra.plugin.scripts.runner.docker.Docker
+      volumes:
+        - /Users/Yasin/flight_prices:/app/flight_prices:ro
+        - /Users/Yasin/.config/gcloud/application_default_credentials.json:/tmp/gcp-adc.json:ro
+
+    containerImage: ghcr.io/astral-sh/uv:python3.13-bookworm-slim
+
+    commands:
+      - cd /app/flight_prices
+      - |
+        export GOOGLE_APPLICATION_CREDENTIALS=/tmp/gcp-adc.json
+        export GOOGLE_CLOUD_PROJECT=flights-pipeline-510915
+        export UV_PROJECT_ENVIRONMENT=/tmp/flights-venv
+
+        uv run --frozen --python 3.13 --env-file .env \
+          python src/flight_prices/ingestion_gcs.py \
+          --engine google_flights \
+          --arrival_id MRU \
+          --outbound_date 2027-01-07 \
+          --return_date 2027-01-16 \
+          --currency GBP \
+          --gl uk \
+          --hl en \
+          --travel_class 1 \
+          --adults 2 \
+          --gcs_bucket flights-pipeline-data-lake-ya
+
+
+  - id: load_bigquery
+    type: io.kestra.plugin.scripts.shell.Commands
+
+    taskRunner:
+      type: io.kestra.plugin.scripts.runner.docker.Docker
+      volumes:
+        - /Users/Yasin/flight_prices:/app/flight_prices:ro
+        - /Users/Yasin/.config/gcloud/application_default_credentials.json:/tmp/gcp-adc.json:ro
+
+    containerImage: ghcr.io/astral-sh/uv:python3.13-bookworm-slim
+
+    commands:
+      - cd /app/flight_prices
+      - |
+        export GOOGLE_APPLICATION_CREDENTIALS=/tmp/gcp-adc.json
+        export GOOGLE_CLOUD_PROJECT=flights-pipeline-510915
+        export UV_PROJECT_ENVIRONMENT=/tmp/flights-venv
+
+        uv run --frozen --python 3.13 --env-file .env \
+          python src/flight_prices/bq_loader.py
+
+
+  - id: run_dbt
+    type: io.kestra.plugin.scripts.shell.Commands
+
+    taskRunner:
+      type: io.kestra.plugin.scripts.runner.docker.Docker
+      volumes:
+        - /Users/Yasin/flight_prices:/app/flight_prices:ro
+        - /Users/Yasin/.config/gcloud/application_default_credentials.json:/tmp/gcp-adc.json:ro
+        - /Users/Yasin/.dbt:/tmp/dbt-profiles:ro
+
+    containerImage: ghcr.io/astral-sh/uv:python3.13-bookworm-slim
+
+    commands:
+      - |
+        export GOOGLE_APPLICATION_CREDENTIALS=/tmp/gcp-adc.json
+        export GOOGLE_CLOUD_PROJECT=flights-pipeline-510915
+        export UV_PROJECT_ENVIRONMENT=/tmp/dbt-venv
+
+        cp -R /app/flight_prices/dbt_env/flight_prices_dbt /tmp/dbt-project
+
+        uv run --project /app/flight_prices/dbt_env \
+          --frozen --python 3.13 \
+          dbt build \
+          --project-dir /tmp/dbt-project \
+          --profiles-dir /tmp/dbt-profiles
+
+
+  - id: email_price_report
+    type: io.kestra.plugin.scripts.shell.Commands
+
+    taskRunner:
+      type: io.kestra.plugin.scripts.runner.docker.Docker
+      volumes:
+        - /Users/Yasin/flight_prices:/app/flight_prices:ro
+        - /Users/Yasin/.config/gcloud/application_default_credentials.json:/tmp/gcp-adc.json:ro
+
+    containerImage: ghcr.io/astral-sh/uv:python3.13-bookworm-slim
+
+    commands:
+      - cd /app/flight_prices
+      - |
+        export GOOGLE_APPLICATION_CREDENTIALS=/tmp/gcp-adc.json
+        export GOOGLE_CLOUD_PROJECT=flights-pipeline-510915
+        export UV_PROJECT_ENVIRONMENT=/tmp/flights-venv
+
+        uv run --frozen --python 3.13 --env-file .env \
+          python src/flight_prices/email_report.py
+
+
+triggers:
+  - id: daily_flight_prices
+    type: io.kestra.plugin.core.trigger.Schedule
+    cron: "0 12 * * *"
+    timezone: Europe/London
+    recoverMissedSchedules: NONE
+
+
